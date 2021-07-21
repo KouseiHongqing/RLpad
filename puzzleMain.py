@@ -8,6 +8,8 @@ import numpy as np
 import random
 from copy import copy,deepcopy
 from queue import Queue
+import datetime
+time = datetime.datetime.time
 class Board():
     def __init__(self,rowSize = 5,colSize =6,colorSize =6,limit =3,limitsteps=60):
         #5x6

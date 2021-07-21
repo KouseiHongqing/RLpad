@@ -2,7 +2,7 @@
 函数说明: 
 Author: hongqing
 Date: 2021-07-19 10:13:46
-LastEditTime: 2021-07-19 14:40:55
+LastEditTime: 2021-07-20 17:52:44
 '''
 '''
 函数说明: 
@@ -19,11 +19,14 @@ import numpy as np
 import os.path
 from puzzleMain import Board
 from puzzleUtil import Util
-import pygame
-from pygame.locals import *
+# import pygame
+# from pygame.locals import *
 import multiprocessing as mp
-
-
+import datetime
+import matplotlib.pyplot as plt
+from pylab import *
+mpl.rcParams['font.sans-serif'] = ['SimHei']
+ctx = mp.get_context("spawn")
 config = configparser.ConfigParser()
 config.read("hyperConfig.conf", encoding="utf-8")
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -46,10 +49,12 @@ colorSize=3
 
 animationOn = False
 animationfps=5
-#启用多进程
-mpActivate = True
+
 #CPU数
 processes = 3
+
+
+
 
 class Net(nn.Module):
     def __init__(self,):
@@ -154,140 +159,170 @@ class DQN(object):
 #     rd = mat[row:,col:]
 #     rd = np.pad(rd,[(0,row-1),(0,col-1)])
 #     return lu,ld,ru,rd
-if(animationOn):
-    pygame.init()
-    screen = pygame.display.set_mode((135*nCol, 135*nRow))
-    pygame.display.set_caption("PadAutomation")
-    background = pygame.image.load(r'E:\RLpaz\data\normal.png').convert()
-    red = pygame.image.load(r'E:\RLpaz\data\red.png').convert()
-    green = pygame.image.load(r'E:\RLpaz\data\green.png').convert()
-    yellow = pygame.image.load(r'E:\RLpaz\data\yellow.png').convert()
-    dark = pygame.image.load(r'E:\RLpaz\data\dark.png').convert()
-    blue = pygame.image.load(r'E:\RLpaz\data\blue.png').convert()
-    pink = pygame.image.load(r'E:\RLpaz\data\pink.png').convert()
-    switch = {1: red,
-                    2: blue,
-                    3: green,
-                    4: yellow,
-                    5: dark,
-                    6: pink,
-                    }
-def nomalTrain():
-    totalloss = 0
+def choose_action_custom(x,limit,eval_):
+        x = torch.unsqueeze(torch.FloatTensor(x).to(device), 0)
+        # 这里只输入一个 sample
+        if np.random.uniform() < EPSILON:   # 选最优动作
+            actions_value = eval_.forward(x)[0].cpu().data.numpy()
+            if(len(limit)>0):
+                for index,__ in enumerate(actions_value):
+                    if(not index in limit):
+                        actions_value[index] = -1e9
+            #选一个最大的动作
+            action = actions_value.argmax()
+        else:   # 选随机动作
+            if(len(limit)>0):
+                action = np.random.choice(limit,1,False)[0]
+            else:
+                action = np.random.randint(0, N_ACTIONS)
+        return action
+
+
+
+def processEpoch(pipe):
     totalreward=0
     combo = 0
     maxcomboget = 0
-    #刷新版面
-    board.initBoardnoDup(True)
-    pos=np.random.randint(0,[nRow,nCol]).tolist()
-    #转珠限制
-    limit =util.getLimit(pos)
-    if(i_episode % 10000 ==0):
-        dqn.save(savefile,i_episode)
-        dqn.save(savefile,'_last')
-    while(True):
-        s = board.board
-        if(animationOn and board.steps%5==0):
-            screen.fill(0)
-            for i in range(nRow):
-                for j in range(nCol):
-                    photo = switch[s[i][j]]
-                    screen.blit(photo, (j*135,i*135))
-            pygame.display.update()
-        #平铺
-        transS = util.boardTrans(s.reshape(1,-1)[0])
-        transS = util.onehot(transS,colorsize=3)
-        a = dqn.choose_action(transS,limit)
-        # 选动作, 得到环境反馈
-        s_, r, done, combo,pos,limit = board.step(pos,a,combo)
-        transS_ = util.boardTrans(s_.reshape(1,-1)[0])
-        transS_ = util.onehot(transS_,colorsize=3)
-        maxcomboget = max(maxcomboget,combo)
-        # 存记忆
-        dqn.store_transition(transS, a, r, transS_)
-        totalreward += r
-        if dqn.memory_counter > MEMORY_CAPACITY:
-            totalloss += dqn.learn() # 记忆库满了就进行学习
-            
-
-        if done:    # 如果回合结束, 进入下回合
-            break
-
-        s = s_
-
-        # print('记忆库已存储:{}/{}'.format(dqn.memory_counter,MEMORY_CAPACITY))
-    print('episode:{},total loss:{},maxcombo:{},totalreward:{},train started:{}'.format(i_episode,totalloss/board.steps,maxcomboget,totalreward,dqn.memory_counter > MEMORY_CAPACITY))
-    if(animationOn):
-        for event in pygame.event.get():
-                    if event.type == pygame.QUIT:
-                        pygame.quit()
-
-def processTrain(board,):
-    totalloss = 0
-    totalreward=0
-    combo = 0
-    maxcomboget = 0
-    #刷新版面
-    board.initBoardnoDup(True)
-    pos=np.random.randint(0,[nRow,nCol]).tolist()
-    #转珠限制
-    limit =util.getLimit(pos)
-    if(i_episode % 10000 ==0):
-        dqn.save(savefile,i_episode)
-        dqn.save(savefile,'_last')
-    while(True):
-        s = board.board
-        #平铺
-        transS = util.boardTrans(s.reshape(1,-1)[0])
-        transS = util.onehot(transS,colorsize=3)
-        a = dqn.choose_action(transS,limit)
-        # 选动作, 得到环境反馈
-        s_, r, done, combo,pos,limit = board.step(pos,a,combo)
-        transS_ = util.boardTrans(s_.reshape(1,-1)[0])
-        transS_ = util.onehot(transS_,colorsize=3)
-        maxcomboget = max(maxcomboget,combo)
-        # 存记忆
-        dqn.store_transition(transS, a, r, transS_)
-        totalreward += r
-        if dqn.memory_counter > MEMORY_CAPACITY:
-            totalloss += dqn.learn() # 记忆库满了就进行学习
-            
-        if done:    # 如果回合结束, 进入下回合
-            break
-
-        s = s_
-
-        # print('记忆库已存储:{}/{}'.format(dqn.memory_counter,MEMORY_CAPACITY))
-    print('episode:{},total loss:{},maxcombo:{},totalreward:{},train started:{}'.format(i_episode,totalloss/board.steps,maxcomboget,totalreward,dqn.memory_counter > MEMORY_CAPACITY))
-
-
-
-dqn = DQN() # 定义 DQN 系统
-#启动进程
-if(mpActivate):
-    board = [Board(rowSize=nRow,colSize=nCol,colorSize=colorSize,limitsteps=10) for i in range (processes)]
-    mulp = [mp.Process(target=processTrain,args=(board[i],)) for i in range(processes)]
-else:
     board = Board(rowSize=nRow,colSize=nCol,colorSize=colorSize,limitsteps=10) # 定义版面
-# animation = padEnv() #定义动画
-util = Util(nRow,nCol,colorSize)#定义util
-savefile = 'pazzuleparams_tiny'
-loadfile = 'pazzuleparams_tiny_last.ckpt'
-if(os.path.isfile(loadfile)):
-    print('loading weights....')
-    dqn.target_net.load_state_dict(torch.load(loadfile))
-    dqn.eval_net.load_state_dict(torch.load(loadfile))
-#启动动画
-#animation.gameStart(fps=0)
-#开始训练
-for i_episode in range(1,10000000):
-    
-    if(mpActivate):
-        for i in mulp:
-            i.start()
-            i.join()
+    #刷新版面
+    board.initBoardnoDup(True)
+    pos=np.random.randint(0,[nRow,nCol]).tolist()
+    util = Util(nRow,nCol,colorSize)#定义util
+    #转珠限制
+    limit =util.getLimit(pos)
+    #从主进程获取网络
+    net = pipe.recv()
+    eval_ = net
+    #传输数据
+    pipedata=[]
+    while(True):
+        s = board.board
+        #平铺
+        transS = util.boardTrans(s.reshape(1,-1)[0])
+        transS = util.onehot(transS,colorsize=3)
+        a = choose_action_custom(transS,limit,eval_)
+        # 选动作, 得到环境反馈
+        s_, r, done, combo,pos,limit = board.step(pos,a,combo)
+        transS_ = util.boardTrans(s_.reshape(1,-1)[0])
+        transS_ = util.onehot(transS_,colorsize=3)
+        maxcomboget = max(maxcomboget,combo)
+        # 传输记忆
+        # dqn.store_transition(transS, a, r, transS_)
+        totalreward += r
+
+        pipedata.append([transS, a, r, transS_])
+        
+        if done:    # 如果回合结束, 进入下回合
+            #发送数据
+            pipe.send((pipedata,totalreward,maxcomboget))
+            pipedata=[]
+            #初始化
+            totalreward=0
+            combo = 0
+            maxcomboget = 0
+            board.initBoardnoDup(True)
+            pos=np.random.randint(0,[nRow,nCol]).tolist()
+            #更新网络 顺便同步 因为走到这一步会卡主，等待主进程发送数据
+            net = pipe.recv()
+            eval_ = net
+
+        s = s_
+
+        # print('记忆库已存储:{}/{}'.format(dqn.memory_counter,MEMORY_CAPACITY))
+    print('episode:{},total loss:{},maxcombo:{},totalreward:{},train started:{}'.format(i_episode,totalloss/board.steps,maxcomboget,totalreward,dqn.memory_counter > MEMORY_CAPACITY))
+
+#动画
+# if(animationOn):
+#     pygame.init()
+#     screen = pygame.display.set_mode((135*nCol, 135*nRow))
+#     pygame.display.set_caption("PadAutomation")
+#     background = pygame.image.load(r'E:\RLpaz\data\normal.png').convert()
+#     red = pygame.image.load(r'E:\RLpaz\data\red.png').convert()
+#     green = pygame.image.load(r'E:\RLpaz\data\green.png').convert()
+#     yellow = pygame.image.load(r'E:\RLpaz\data\yellow.png').convert()
+#     dark = pygame.image.load(r'E:\RLpaz\data\dark.png').convert()
+#     blue = pygame.image.load(r'E:\RLpaz\data\blue.png').convert()
+#     pink = pygame.image.load(r'E:\RLpaz\data\pink.png').convert()
+#     switch = {1: red,
+#                     2: blue,
+#                     3: green,
+#                     4: yellow,
+#                     5: dark,
+#                     6: pink,
+#                     }
+
+def main():
+    print('start training...')
+    dqn = DQN() # 定义 DQN 系统
+    #启动进程
+    pipe_dict = dict((i, (pipe1, pipe2)) for i in range(processes) for pipe1, pipe2 in (ctx.Pipe(),))
+    child_process_list = []
+    for i in range(processes):
+        print('start process:{}'.format(i))
+        pro = ctx.Process(target=processEpoch, args=(pipe_dict[i][1],))
+        child_process_list.append(pro)
+    # 发送第一波数据 启动进程探索 
+    [pipe_dict[i][0].send(dqn.eval_net) for i in range(processes)]
+    [p.start() for p in child_process_list]
+
+    # animation = padEnv() #定义动画
+    # util = Util(nRow,nCol,colorSize)#定义util
+    savefile = 'pazzuleparams_tiny'
+    loadfile = 'pazzuleparams_tiny_last1.ckpt'
+    if(os.path.isfile(loadfile)):
+        print('loading weights....')
+        dqn.target_net.load_state_dict(torch.load(loadfile))
+        dqn.eval_net.load_state_dict(torch.load(loadfile))
+    #启动动画
+    #animation.gameStart(fps=0)
+    #开始训练
+    nowepoch = 0
+    epochloss=0
+    calreward = 0
+    calloss = 0
+    calcombo =0
+    pltcombo = []
+    pltreward = []
+    time1=datetime.datetime.now()
+    for i_episode in range(1,10000000):
+        for i in range(processes):
+            receive = pipe_dict[i][0].recv()
+            # transS, a, r, transS = receive[0]
+            totalreward = receive[1]
+            maxcomboget = receive[2]
+            for transS, a, r, transS_ in receive[0]:
+                dqn.store_transition(transS, a, r, transS_)
+                if dqn.memory_counter > MEMORY_CAPACITY:
+                    epochloss = dqn.learn() # 记忆库满了就进行学习
+            nowepoch+=1
+            calreward += totalreward
+            calloss += epochloss
+            calcombo += maxcomboget
+            print('process:{},episode:{},loss:{},maxcombo:{},totalreward:{},train started:{}'.format(i,nowepoch,epochloss,maxcomboget,totalreward,dqn.memory_counter > MEMORY_CAPACITY))
+            if(nowepoch%1000==0):
+                time2 = datetime.datetime.now()
+                print('1000epochs执行所花费时间:{},平均得分:{},平均loss:{}'.format((time2-time1),calreward/1000,calloss/1000))
+                time1 = time2
+                pltreward.append(calreward/1000)
+                pltcombo.append(calcombo/1000)
+                calreward = 0
+                calloss = 0
+                calcombo=0
+
+                if(nowepoch%10000==0):
+                    plt.clf()
+                    plt.figure(figsize=(8,6))
+                    plt.title('训练效果')
+                    plt.xlabel('训练次数/1000epoch')
+                    plt.ylabel('得分')
+                    a = np.arange(len(pltreward))
+                    plt.plot(a, pltreward)
+                    plt.plot(a, pltcombo)
+                    plt.savefig('pic\\'+nowepoch)
+        [pipe_dict[i][0].send(dqn.eval_net) for i in range(processes)]
+
+if __name__ == '__main__':
+    main()
             
-    else:
-        nomalTrain()
 
     
