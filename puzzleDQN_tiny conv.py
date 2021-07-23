@@ -2,7 +2,7 @@
 函数说明: 
 Author: hongqing
 Date: 2021-07-19 10:13:46
-LastEditTime: 2021-07-23 13:21:49
+LastEditTime: 2021-07-23 17:11:24
 '''
 '''
 函数说明: 
@@ -41,38 +41,43 @@ MEMORY_CAPACITY = config.getint('HYPERPARA','MEMORY_CAPACITY')     # 记忆库�
 
 
 
-nRow = 3
-nCol = 3
-colorSize=3
-
+nRow = 5
+nCol = 6
+colorSize=6
+isPlay = False
 animationOn = False
 animationfps=5
 
 #CPU数
 processes = 3
 
-N_ACTIONS = 8  # 能做的动作
+N_ACTIONS = 49  # 能做的动作
 
-N_STATES = nRow*nCol*(colorSize+1)   # 能获取的环境信息数
+N_STATES = max(nRow,nCol)**2*colorSize  # 能获取的环境信息数
 
+N_DEPTH = colorSize +1
+#input (6+1) *
 class Net(nn.Module):
     def __init__(self,):
         super(Net, self).__init__()
-        self.cn1 = nn.Conv2d()
-        self.fc1 = nn.Linear(N_STATES, N_STATES*3)
-        self.fc1.weight.data.normal_(0, 0.1)   # initialization
-        self.out1 = nn.Linear(N_STATES*3, N_STATES*3)
-        self.out1.weight.data.normal_(0, 0.1)   # initialization
-        self.out = nn.Linear(N_STATES*3, N_ACTIONS)
-        self.out.weight.data.normal_(0, 0.1)   # initialization
+        self.cn1 = nn.Conv2d(6,63,6,padding=3)
+        self.cn2 = nn.Conv2d(63,63,5,padding=2)
+        self.cn3 = nn.Conv2d(63,126,4,padding=1)
+        self.cn4 = nn.Conv2d(126,252,3,padding=1)
+        self.cn5 = nn.Conv2d(252,2,1)
+        self.val_fc1 = nn.Linear(2*max(nRow,nCol)**2, 256)
+        self.val_fc2 = nn.Linear(256, 49)
 
         
     def forward(self, x):
-        x = self.fc1(x)
-        x = F.relu(x)
-        x = self.out1(x)
-        x = F.relu(x)
-        actions_value = self.out(x)
+        x = F.relu(self.cn1(x))
+        x = F.relu(self.cn2(x))
+        x = F.relu(self.cn3(x))
+        x = F.relu(self.cn4(x))
+        x = F.relu(self.cn5(x))
+        x = x.view(-1, 2*max(nRow,nCol)**2)
+        x = F.relu(self.val_fc1(x))
+        actions_value = self.val_fc2(x)
         return actions_value
 
 
@@ -111,6 +116,8 @@ class DQN(object):
         return action
 
     def store_transition(self, s, a, r, s_):
+        s = np.array(s).flatten()
+        s_ = np.array(s_).flatten()
         transition = np.hstack((s, [a, r], s_))
         # 如果记忆库满了, 就覆盖老数据
         index = self.memory_counter % MEMORY_CAPACITY
@@ -126,10 +133,17 @@ class DQN(object):
         # 抽取记忆库中的批数据
         sample_index = np.random.choice(MEMORY_CAPACITY, BATCH_SIZE)
         b_memory = self.memory[sample_index, :]
-        b_s = torch.FloatTensor(b_memory[:, :N_STATES]).to(device)
-        b_a = torch.LongTensor(b_memory[:, N_STATES:N_STATES+1].astype(int)).to(device)
-        b_r = torch.FloatTensor(b_memory[:, N_STATES+1:N_STATES+2]).to(device)
-        b_s_ = torch.FloatTensor(b_memory[:, -N_STATES:]).to(device)
+        ##conv
+        b_s = torch.FloatTensor(b_memory[:, :216]).to(device)
+        b_s = b_s.reshape(6,6,6)
+        b_a = torch.LongTensor(b_memory[:, 216:216+1].astype(int)).to(device)
+        b_r = torch.FloatTensor(b_memory[:, 216+1:216+2]).to(device)
+        b_s_ = torch.FloatTensor(b_memory[:, -216:]).to(device)
+        b_s_ = b_s_.reshape(6,6,6)
+        # b_s = torch.FloatTensor(b_memory[:, :N_STATES]).to(device)
+        # b_a = torch.LongTensor(b_memory[:, N_STATES:N_STATES+1].astype(int)).to(device)
+        # b_r = torch.FloatTensor(b_memory[:, N_STATES+1:N_STATES+2]).to(device)
+        # b_s_ = torch.FloatTensor(b_memory[:, -N_STATES:]).to(device)
 
         # 针对做过的动作b_a, 来选 q_eval 的值, (q_eval 原本有所有动作的值)
         q_eval = self.eval_net(b_s).gather(1, b_a)  # shape (batch, 1)
@@ -183,13 +197,16 @@ def processEpoch(pipe):
     totalreward=0
     combo = 0
     maxcomboget = 0
-    board = Board(rowSize=nRow,colSize=nCol,colorSize=colorSize,limitsteps=10) # 定义版面
+    board = Board(rowSize=nRow,colSize=nCol,colorSize=colorSize,limitsteps=100) # 定义版面
     #刷新版面
     board.initBoardnoDup(True)
-    pos=np.random.randint(0,[nRow,nCol]).tolist()
+    
     util = Util(nRow,nCol,colorSize)#定义util
+    limit = []
     #转珠限制
-    limit =util.getLimit(pos)
+    pos=np.random.randint(0,[nRow,nCol]).tolist()
+    if(isPlay):
+        limit =util.getLimit(pos)
     #从主进程获取网络
     net = pipe.recv()
     eval_ = net
@@ -198,13 +215,11 @@ def processEpoch(pipe):
     while(True):
         s = board.board
         #平铺
-        transS = util.boardTrans(s.reshape(1,-1)[0])
-        transS = util.onehot(transS,colorsize=3)
+        transS,_ = util.autoOptim(s)
         a = choose_action_custom(transS,limit,eval_)
         # 选动作, 得到环境反馈
         s_, r, done, combo,pos,limit = board.step(pos,a,combo)
-        transS_ = util.boardTrans(s_.reshape(1,-1)[0])
-        transS_ = util.onehot(transS_,colorsize=3)
+        transS_,_ = util.autoOptim(s_)
         maxcomboget = max(maxcomboget,combo)
         # 传输记忆
         # dqn.store_transition(transS, a, r, transS_)

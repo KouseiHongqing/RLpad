@@ -2,7 +2,7 @@
 函数说明: 
 Author: hongqing
 Date: 2021-07-14 10:50:40
-LastEditTime: 2021-07-19 13:50:20
+LastEditTime: 2021-07-23 16:50:20
 '''
 import numpy as np
 import random
@@ -20,6 +20,7 @@ class Board():
         self.limitsteps = limitsteps
         self.steps = 0
         self.maxcomb = 0
+        self.dupBoard = {}
 
         
     ##初始化版面
@@ -196,13 +197,14 @@ class Board():
         self.board = tmp
         
         if(combo == curcombo):
-            return 0,combo
+            return -1,combo
         # if(combo < curcombo):
         #     return -pow(2,curcombo*2-combo),combo
         #分数计算规则
-        reward = pow(2,combo)
+        # reward = pow(2,combo)
+        reward = 0 
         if(combo ==maxcombo):
-            reward = pow(2,maxcombo+2)
+            reward = 100
         return reward,combo
     
     #根据当前珠子获取可选位置 pos为当前珠
@@ -242,7 +244,7 @@ class Board():
         return oldPos
 
     #pos1为操作珠
-    def step(self,pos,action,combo):
+    def step(self,pos,action,combo,isPlay=False):
         self.steps+=1
         done = self.steps>=self.limitsteps or combo == self.maxcomb
         # step forward
@@ -252,7 +254,8 @@ class Board():
         s_ = self.board
         canchoose = self.getLimit(targetPos)
         limit=[]
-        for i in canchoose:
-            if(i != action):
-                limit.append(i)
+        if(isPlay):
+            for i in canchoose:
+                if(i != action):
+                    limit.append(i)
         return s_, r, done, combo,targetPos,limit

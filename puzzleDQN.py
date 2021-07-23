@@ -2,7 +2,7 @@
 函数说明: 
 Author: hongqing
 Date: 2021-07-13 15:40:23
-LastEditTime: 2021-07-19 10:13:33
+LastEditTime: 2021-07-23 10:42:50
 '''
 import configparser
 from numpy.core.shape_base import hstack
@@ -26,7 +26,7 @@ GAMMA = config.getfloat('HYPERPARA','GAMMA')                 # 奖励递减参�
 TARGET_REPLACE_ITER = config.getfloat('HYPERPARA','TARGET_REPLACE_ITER')  # Q 现实网络的更新频率
 MEMORY_CAPACITY = config.getint('HYPERPARA','MEMORY_CAPACITY')     # 记忆库大小
 
-(6-1)*5 +(5-1)*6
+#(6-1)*5 +(5-1)*6
 N_ACTIONS = 49  # 能做的动作
 #5*4*4
 N_STATES = 30*6   # 能获取的环境信息数
@@ -35,7 +35,7 @@ nRow = 5
 nCol = 6
 colorSize=6
 
-animationOn = False
+animationOn = True
 animationfps=5
 
 class Net(nn.Module):

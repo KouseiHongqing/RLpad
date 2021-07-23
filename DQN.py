@@ -2,7 +2,7 @@
 函数说明: 
 Author: hongqing
 Date: 2021-07-13 15:46:00
-LastEditTime: 2021-07-16 17:47:49
+LastEditTime: 2021-07-23 11:53:46
 '''
 import torch
 import torch.nn as nn
@@ -26,31 +26,22 @@ ENV_A_SHAPE=0
 class Net(nn.Module):
     def __init__(self, N_STATES,N_ACTIONS):
         super(Net, self).__init__()
-        self.fc1 = nn.Linear(N_STATES, 60)
+        self.fc1 = nn.Linear(N_STATES, 20)
         self.fc1.weight.data.normal_(0, 0.1)   # initialization
-        self.out = nn.Linear(60, 120)
+        self.out = nn.Linear(20, 2)
         self.out.weight.data.normal_(0, 0.1)   # initialization
-        self.out2 = nn.Linear(120, 240)
-        self.out2.weight.data.normal_(0, 0.1)   # initialization
-        self.out3 = nn.Linear(240, N_ACTIONS)
-        self.out3.weight.data.normal_(0, 0.1)   # initialization
+       
 
     def forward(self, x):
         x = self.fc1(x)
         x = F.relu(x)
-        x = self.out(x)
-        x = F.relu(x)
-        x = self.out1(x)
-        x = F.relu(x)
-        x = self.out2(x)
-        x = F.relu(x)
-        actions_value = self.out3(x)
+        actions_value = self.out(x)
         return actions_value
 
 
 class DQN(object):
     def __init__(self):
-        self.eval_net, self.target_net = Net(), Net()
+        self.eval_net, self.target_net = Net(N_STATES,N_ACTIONS), Net(N_STATES,N_ACTIONS)
         self.learn_step_counter = 0     # 用于 target 更新计时
         self.memory_counter = 0         # 记忆库记数
         self.memory = np.zeros((MEMORY_CAPACITY, N_STATES * 2 + 2))     # 初始化记忆库
@@ -100,12 +91,14 @@ class DQN(object):
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+        return loss.item()
 
 
 dqn = DQN() # 定义 DQN 系统
 
-for i_episode in range(400):
+for i_episode in range(400000):
     s = env.reset()
+    totalloss = 0
     while True:
         env.render()    # 显示实验动画
         a = dqn.choose_action(s)
@@ -114,17 +107,17 @@ for i_episode in range(400):
         s_, r, done, info = env.step(a)
 
         # 修改 reward, 使 DQN 快速学习
-        x, x_dot, theta, theta_dot = s_
-        r1 = (env.x_threshold - abs(x)) / env.x_threshold - 0.8
-        r2 = (env.theta_threshold_radians - abs(theta)) / env.theta_threshold_radians - 0.5
-        r = r1 + r2
+        # x, x_dot, theta, theta_dot = s_
+        # r1 = (env.x_threshold - abs(x)) / env.x_threshold - 0.8
+        # r2 = (env.theta_threshold_radians - abs(theta)) / env.theta_threshold_radians - 0.5
+        # r = r1 + r2
 
         # 存记忆
         dqn.store_transition(s, a, r, s_)
 
         if dqn.memory_counter > MEMORY_CAPACITY:
-            dqn.learn() # 记忆库满了就进行学习
-
+            totalloss = dqn.learn() # 记忆库满了就进行学习
+        print('episode:{},loss:{},train started:{}'.format(i_episode,totalloss,dqn.memory_counter > MEMORY_CAPACITY))
         if done:    # 如果回合结束, 进入下回合
             break
 
