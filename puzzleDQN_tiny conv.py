@@ -1,14 +1,14 @@
 '''
 函数说明: 
 Author: hongqing
-Date: 2021-07-19 10:13:46
-LastEditTime: 2021-07-23 17:11:24
+Date: 2021-07-23 13:21:53
+LastEditTime: 2021-07-29 13:51:36
 '''
 '''
 函数说明: 
 Author: hongqing
 Date: 2021-07-13 15:40:23
-LastEditTime: 2021-07-16 11:27:38
+LastEditTime: 2021-07-23 17:54:16
 '''
 import configparser
 from numpy.core.shape_base import hstack
@@ -41,17 +41,17 @@ MEMORY_CAPACITY = config.getint('HYPERPARA','MEMORY_CAPACITY')     # 记忆库�
 
 
 
-nRow = 5
-nCol = 6
-colorSize=6
+nRow = 3
+nCol = 3
+colorSize=3
 isPlay = False
 animationOn = False
 animationfps=5
 
 #CPU数
-processes = 3
+processes = 4
 
-N_ACTIONS = 49  # 能做的动作
+N_ACTIONS = (nCol-1)*nRow + (nRow-1)*nCol  # 能做的动作
 
 N_STATES = max(nRow,nCol)**2*colorSize  # 能获取的环境信息数
 
@@ -60,21 +60,28 @@ N_DEPTH = colorSize +1
 class Net(nn.Module):
     def __init__(self,):
         super(Net, self).__init__()
-        self.cn1 = nn.Conv2d(6,63,6,padding=3)
-        self.cn2 = nn.Conv2d(63,63,5,padding=2)
-        self.cn3 = nn.Conv2d(63,126,4,padding=1)
-        self.cn4 = nn.Conv2d(126,252,3,padding=1)
-        self.cn5 = nn.Conv2d(252,2,1)
+        # self.cn1 = nn.Conv2d(6,12,6,padding=3)
+        # self.cn2 = nn.Conv2d(12,24,5,padding=2)
+        # self.cn3 = nn.Conv2d(24,48,4,padding=1)
+        # self.cn4 = nn.Conv2d(48,96,3,padding=1)
+        # self.cn5 = nn.Conv2d(96,2,1)
+        # self.val_fc1 = nn.Linear(2*max(nRow,nCol)**2, 256)
+        # self.val_fc2 = nn.Linear(256, N_ACTIONS)
+        self.cn = nn.Conv2d(3,2,3,padding=1)
         self.val_fc1 = nn.Linear(2*max(nRow,nCol)**2, 256)
-        self.val_fc2 = nn.Linear(256, 49)
+        self.val_fc2 = nn.Linear(256, N_ACTIONS)
 
         
     def forward(self, x):
-        x = F.relu(self.cn1(x))
-        x = F.relu(self.cn2(x))
-        x = F.relu(self.cn3(x))
-        x = F.relu(self.cn4(x))
-        x = F.relu(self.cn5(x))
+        # x = F.relu(self.cn1(x))
+        # x = F.relu(self.cn2(x))
+        # x = F.relu(self.cn3(x))
+        # x = F.relu(self.cn4(x))
+        # x = F.relu(self.cn5(x))
+        # x = x.view(-1, 2*max(nRow,nCol)**2)
+        # x = F.relu(self.val_fc1(x))
+        # actions_value = self.val_fc2(x)
+        x = F.relu(self.cn(x))
         x = x.view(-1, 2*max(nRow,nCol)**2)
         x = F.relu(self.val_fc1(x))
         actions_value = self.val_fc2(x)
@@ -134,12 +141,13 @@ class DQN(object):
         sample_index = np.random.choice(MEMORY_CAPACITY, BATCH_SIZE)
         b_memory = self.memory[sample_index, :]
         ##conv
-        b_s = torch.FloatTensor(b_memory[:, :216]).to(device)
-        b_s = b_s.reshape(6,6,6)
-        b_a = torch.LongTensor(b_memory[:, 216:216+1].astype(int)).to(device)
-        b_r = torch.FloatTensor(b_memory[:, 216+1:216+2]).to(device)
-        b_s_ = torch.FloatTensor(b_memory[:, -216:]).to(device)
-        b_s_ = b_s_.reshape(6,6,6)
+        siiz = colorSize * max(nRow,nCol)**2
+        b_s = torch.FloatTensor(b_memory[:, :siiz]).to(device)
+        b_s = b_s.reshape(-1,colorSize,max(nRow,nCol),max(nRow,nCol))
+        b_a = torch.LongTensor(b_memory[:, siiz:siiz+1].astype(int)).to(device)
+        b_r = torch.FloatTensor(b_memory[:, siiz+1:siiz+2]).to(device)
+        b_s_ = torch.FloatTensor(b_memory[:, -siiz:]).to(device)
+        b_s_ = b_s_.reshape(-1,colorSize,max(nRow,nCol),max(nRow,nCol))
         # b_s = torch.FloatTensor(b_memory[:, :N_STATES]).to(device)
         # b_a = torch.LongTensor(b_memory[:, N_STATES:N_STATES+1].astype(int)).to(device)
         # b_r = torch.FloatTensor(b_memory[:, N_STATES+1:N_STATES+2]).to(device)
