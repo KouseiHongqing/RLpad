@@ -2,7 +2,7 @@
 函数说明: 
 Author: hongqing
 Date: 2021-07-13 16:22:36
-LastEditTime: 2021-08-12 15:10:46
+LastEditTime: 2021-08-12 17:32:07
 '''
 import numpy as np
 import pygame
@@ -39,13 +39,13 @@ class padEnv:
         pygame.init()
         self.screen = pygame.display.set_mode((self.ballwidth*self.colSize,self.ballwidth*self.rowSize))
         pygame.display.set_caption("PadAutomation")
-        background = pygame.image.load(r'E:\RLpaz\data\normal.png').convert()
-        red = pygame.image.load(r'E:\RLpaz\data\red.png').convert()
-        green = pygame.image.load(r'E:\RLpaz\data\green.png').convert()
-        yellow = pygame.image.load(r'E:\RLpaz\data\yellow.png').convert()
-        dark = pygame.image.load(r'E:\RLpaz\data\dark.png').convert()
-        blue = pygame.image.load(r'E:\RLpaz\data\blue.png').convert()
-        pink = pygame.image.load(r'E:\RLpaz\data\pink.png').convert()
+        background = pygame.image.load(r'data\normal.png').convert()
+        red = pygame.image.load(r'data\red.png').convert()
+        green = pygame.image.load(r'data\green.png').convert()
+        yellow = pygame.image.load(r'data\yellow.png').convert()
+        dark = pygame.image.load(r'data\dark.png').convert()
+        blue = pygame.image.load(r'data\blue.png').convert()
+        pink = pygame.image.load(r'data\pink.png').convert()
         self.switch = {1: red,
                     2: blue,
                     3: green,
