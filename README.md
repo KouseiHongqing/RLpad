@@ -2,20 +2,28 @@
  * @函数说明: 
  * @Author: hongqing
  * @Date: 2021-07-21 11:29:10
- * @LastEditTime: 2021-08-12 15:25:42
+ * @LastEditTime: 2021-08-12 15:34:29
 -->
 # PyTorch implementation of Reinforcement Learning A3C,DQN,DPPO
 Use Reinforcement learning to play pazudora!
 用强化学习的方式游玩智龙迷城
 強化学習を使ってパズドラを遊びます
 
-![pad](/data/results/pad.png)
+![pad](data/result/pad.png)
 This code is 
 A3C Paper: Actor Critic (A3C) from ["Asynchronous Methods for Deep Reinforcement Learning"](https://arxiv.org/pdf/1602.01783v1.pdf),A3C refer to morvan's code ["这里"](https://github.com/MorvanZhou/pytorch-A3C)
 A3C实现参考了论文和莫凡的代码 在上面
 A3Cの実現は論文とmovanさんのコードを参考しました
 
-
+```
+├── README.md
+├── data            dataset
+├── env             pad environment
+├── padA3C            
+├── padDQN              
+├── testfile
+├── main.py         demo to run pytorch --> padA3C/DQN/test
+```
 
 
 DQN未整理，DPPO未完成
