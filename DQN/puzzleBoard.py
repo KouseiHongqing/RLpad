@@ -2,12 +2,14 @@
 函数说明: 
 Author: hongqing
 Date: 2021-07-14 10:50:40
-LastEditTime: 2021-08-13 15:40:26
+LastEditTime: 2021-08-13 15:30:39
 '''
 import numpy as np
 import random
 from copy import copy,deepcopy
 from queue import Queue
+import datetime
+time = datetime.datetime.time
 class Board():
     def __init__(self,rowSize = 5,colSize =6,colorSize =6,limit =3,limitsteps=60):
         #init 5x6

@@ -2,15 +2,15 @@
 函数说明: 
 Author: hongqing
 Date: 2021-07-13 16:22:36
-LastEditTime: 2021-08-13 11:21:07
+LastEditTime: 2021-08-13 15:04:54
 '''
 import numpy as np
 import pygame
 # from pygame.locals import *
 # 导入一些常用的函数和常量
 from sys import exit
-from env.puzzleBoard import Board
-from env.puzzleUtil import Util
+from puzzleBoard import Board
+from puzzleUtil import Util
 
 class padEnv:
     #Full = ture 满combo矩阵 Fall=True 生成0combo矩阵 反之生成随机
@@ -39,13 +39,13 @@ class padEnv:
         pygame.init()
         self.screen = pygame.display.set_mode((self.ballwidth*self.colSize,self.ballwidth*self.rowSize))
         pygame.display.set_caption("PadAutomation")
-        background = pygame.image.load(r'data\normal.png').convert()
-        red = pygame.image.load(r'data\red.png').convert()
-        green = pygame.image.load(r'data\green.png').convert()
-        yellow = pygame.image.load(r'data\yellow.png').convert()
-        dark = pygame.image.load(r'data\dark.png').convert()
-        blue = pygame.image.load(r'data\blue.png').convert()
-        pink = pygame.image.load(r'data\pink.png').convert()
+        background = pygame.image.load(r'E:\RLpaz\data\normal.png').convert()
+        red = pygame.image.load(r'E:\RLpaz\data\red.png').convert()
+        green = pygame.image.load(r'E:\RLpaz\data\green.png').convert()
+        yellow = pygame.image.load(r'E:\RLpaz\data\yellow.png').convert()
+        dark = pygame.image.load(r'E:\RLpaz\data\dark.png').convert()
+        blue = pygame.image.load(r'E:\RLpaz\data\blue.png').convert()
+        pink = pygame.image.load(r'E:\RLpaz\data\pink.png').convert()
         self.switch = {1: red,
                     2: blue,
                     3: green,
@@ -85,13 +85,6 @@ class padEnv:
 
     def getBoard(self,):
         return self.util.autoOptim(self.board.board)[0]
-
-    def getBoardRaw(self,):
-        tmp = self.board.reshape(-1)
-        res=0
-        for i in tmp:
-            res*=10+i
-        return res
 
     def test(self,):
         for i in range(10000):

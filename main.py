@@ -2,11 +2,12 @@
 函数说明: 
 Author: hongqing
 Date: 2021-08-11 16:05:12
-LastEditTime: 2021-08-12 17:55:51
+LastEditTime: 2021-08-13 16:17:23
 '''
 from padA3C.sharedAdam import SharedAdam
 from padA3C.A3C import A3Cmethod
 from padA3C.A3Ctest import test
+from DQN.dqn import DQNmethod
 import argparse
 import os
 
@@ -36,11 +37,11 @@ parser.add_argument('--no-shared', default=False,
                     help='use an optimizer without shared momentum.')
 parser.add_argument('--fps', type=int,default=-1,
                     help='control animation fps.default 10')
-parser.add_argument('--row_size', type=int,default=5,
+parser.add_argument('--row-size', type=int,default=5,
                     help='board row size')
-parser.add_argument('--col_size', type=int,default=6,
+parser.add_argument('--col-size', type=int,default=6,
                     help='board col size')
-parser.add_argument('--color_size', type=int,default=6,
+parser.add_argument('--color-size', type=int,default=6,
                     help='board color size')
 parser.add_argument('--thres', type=int,default=3,
                     help='combo thres')
@@ -52,9 +53,16 @@ parser.add_argument('--updateiter', type=int,default=10,
                     help='UPDATE_GLOBAL_ITER')
 parser.add_argument('--method', type=str,default='A3C',
                     help='algorithm method')
-
-
-    
+parser.add_argument('--memory-capacity', type=int,default=10000,
+                    help='DQN MEMORY_CAPACITY ')
+parser.add_argument('--target_replace_iter', type=int,default=1000,
+                    help='DQN TARGET_REPLACE_ITER ')
+parser.add_argument('--batch-size', type=int,default=64,
+                    help='DQN BATCH_SIZE ')
+parser.add_argument('--dqn-epsilon', type=int,default=0.9,
+                help='DQN EPSILON')
+parser.add_argument('--dqn-gamma', type=int,default=0.9,
+                help='DQN GAMMA')
 os.environ['OMP_NUM_THREADS'] = '1'
 
 args = parser.parse_args()
@@ -62,4 +70,5 @@ args = parser.parse_args()
 
 
 if __name__ == "__main__":
-    A3Cmethod(args)
+    # A3Cmethod(args)  
+    DQNmethod(args) 

@@ -2,7 +2,7 @@
  * @函数说明: 
  * @Author: hongqing
  * @Date: 2021-07-21 11:29:10
- * @LastEditTime: 2021-08-12 15:35:34
+ * @LastEditTime: 2021-08-13 09:41:31
 -->
 # PyTorch implementation of Reinforcement Learning A3C,DQN,DPPO
 Use Reinforcement learning to play pazudora!
@@ -47,7 +47,7 @@ python main.py --method test
 
 run 5X6 with 6colors pazudora(4 processes):
 
-python main.py --method A3C --row_size 5 --col_size 6 --color_size 6 --num-processes 4 fps=-1
+python main.py --method A3C --row-size 5 --col-size 6 --color-size 6 --num-processes 4 fps=-1
 
 (if you want see the animation, set fps>0)
 
