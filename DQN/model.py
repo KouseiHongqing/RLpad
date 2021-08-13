@@ -51,22 +51,27 @@ class TinyNet(nn.Module):
     def __init__(self,N_STATES,N_ACTIONS,device='cpu'):
         super(TinyNet, self).__init__()
         self.device = device
-        self.fc1 = nn.Linear(27,48*4)
+        self.cn = nn.Conv2d(3,18,3)
+        self.fc1 = nn.Linear(18,48*4)
         self.fc2 = nn.Linear(48*4,48)
         self.fc3 = nn.Linear(48,12)
 
         # self.apply(weights_init)
 
     def forward(self, x):
-        x= x.view(-1,27)
+        x = F.relu(self.cn(x))
+        x= x.view(-1,18)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         actions_value = self.fc3(x)
         return actions_value
 
-    def choose_action(self, x,limit):
+    def choose_action(self, x,limit,eval=False):
         # 这里只输入一个 sample
-        if np.random.uniform() < 0.9:   # 选最优动作
+        eps = 0.9
+        if(eval):
+            eps = 1
+        if np.random.uniform() <= eps:   # 选最优动作
             actions_value = self.forward(x)[0].cpu().data.numpy()
             if(len(limit)>0):
                 for index,__ in enumerate(actions_value):
@@ -164,104 +169,3 @@ class DQN(object):
         loss.backward()
         self.optimizer.step()
         return loss
-
-
-# class DQN(object):
-#     def __init__(self,device='cpu',model='tiny'):
-#         self.device = device
-#         nCol = 3
-#         nRow = 3
-#         nColor = 3
-#         self.nCol = 3
-#         self.nRow = 3
-#         self.nColor = 3
-#         self.N_ACTIONS = (nCol-1)*nRow + (nRow-1)*nCol  # 能做的动作
-#         self.N_STATES = max(nRow,nCol)**2*nColor  # 能获取的环境信息数
-#         if(model=='tiny'):
-#             self.eval_net, self.target_net = TinyNet(self.N_STATES,self.N_ACTIONS).to(device), TinyNet(self.N_STATES,self.N_ACTIONS).to(device)
-#         elif(model=='normal'):
-#             self.eval_net, self.target_net = Net(self.N_STATES,self.N_ACTIONS).to(device), Net(self.N_STATES,self.N_ACTIONS).to(device)
-#         self.eval_net.share_memory()
-#         self.learn_step_counter = 0     # 用于 target 更新计时
-#         self.memory_counter = 0         # 记忆库记数
-#         self.memory = np.zeros((10000, self.N_STATES * 2 + 2))     # 初始化记忆库
-#         self.optimizer = torch.optim.Adam(self.eval_net.parameters(),lr=0.001)    # torch 的优化器
-#         self.loss_func = nn.MSELoss().to(device)   # 误差公式
-#         self.version = 0
-    
-#     def load(self,savefile,i_episode):
-#         self.eval_net.load_state_dict(torch.load(savefile+i_episode))
-#         self.target_net.load_state_dict(torch.load(savefile+i_episode))
-        
-#     def save(self,savefile,i_episode):
-#         torch.save(self.eval_net.state_dict(), './weights/'+savefile+str(i_episode)+'.ckpt')
-
-#     def choose_action(self, x,limit):
-#         # 这里只输入一个 sample
-#         if np.random.uniform() < EPSILON:   # 选最优动作
-#             actions_value = self.eval_net.forward(x)[0].cpu().data.numpy()
-#             if(len(limit)>0):
-#                 for index,__ in enumerate(actions_value):
-#                     if(not index in limit):
-#                         actions_value[index] = -1e9
-#             #选一个最大的动作
-#             action = actions_value.argmax()
-#         else:   # 选随机动作
-#             if(len(limit)>0):
-#                 action = np.random.choice(limit,1,False)[0]
-#             else:
-#                 action = np.random.randint(0, self.N_ACTIONS)
-#         return action
-
-#     def store_transition(self, s, a, r, s_):
-#         s = np.array(s).flatten()
-#         s_ = np.array(s_).flatten()
-#         transition = np.hstack((s, [a, r], s_))
-#         # 如果记忆库满了, 就覆盖老数据
-#         index = self.memory_counter % 10000
-#         self.memory[index, :] = transition
-#         self.memory_counter += 1
-
-#     def batch_store_transition(self,transition):
-#         self.memory = np.vstack((self.memory,transition))
-#         self.memory = self.memory[-10000:,:]
-#         self.memory_counter = self.memory.shape[0]
-
-#     def learn(self):
-#         # target net 参数更新
-#         if self.learn_step_counter % 1000 == 0:
-#             self.target_net.load_state_dict(self.eval_net.state_dict())
-#             self.version+=1
-#         self.learn_step_counter += 1
-
-#         # 抽取记忆库中的批数据
-#         sample_index = np.random.choice(10000, 32)
-#         b_memory = self.memory[sample_index, :]
-#         b_s = torch.FloatTensor(b_memory[:, :self.N_STATES]).to(self.device)
-#         b_a = torch.LongTensor(b_memory[:, self.N_STATES:self.N_STATES+1].astype(int)).to(self.device)
-#         b_r = torch.FloatTensor(b_memory[:, self.N_STATES+1:self.N_STATES+2]).to(self.device)
-#         b_s_ = torch.FloatTensor(b_memory[:, -self.N_STATES:]).to(self.device)
-
-#         nCol = 3
-#         nRow = 3
-#         self.args.color_size=3
-#         self.args.batch_size=32
-#         GAMMA=0.9
-#         # 针对做过的动作b_a, 来选 q_eval 的值, (q_eval 原本有所有动作的值)
-#         siiz = self.args.color_size * max(nRow,nCol)**2
-#         b_s = torch.FloatTensor(b_memory[:, :siiz]).to(self.device)
-#         b_s = b_s.reshape(-1,self.args.color_size,max(nRow,nCol),max(nRow,nCol))
-#         b_a = torch.LongTensor(b_memory[:, siiz:siiz+1].astype(int)).to(self.device)
-#         b_r = torch.FloatTensor(b_memory[:, siiz+1:siiz+2]).to(self.device)
-#         b_s_ = torch.FloatTensor(b_memory[:, -siiz:]).to(self.device)
-#         b_s_ = b_s_.reshape(-1,self.args.color_size,max(nRow,nCol),max(nRow,nCol))
-
-#         q_eval = self.eval_net(b_s).gather(1, b_a)  # shape (batch, 1)
-#         q_next = self.target_net(b_s_).detach()     # q_next 不进行反向传递误差, 所以 detach
-#         q_target = b_r + GAMMA * q_next.max(1)[0].view(self.args.batch_size, 1)    # shape (batch, 1)
-#         loss = self.loss_func(q_eval, q_target)
-#         # 计算, 更新 eval net
-#         self.optimizer.zero_grad()
-#         loss.backward()
-#         self.optimizer.step()
-#         return loss

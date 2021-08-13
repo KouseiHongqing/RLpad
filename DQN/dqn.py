@@ -2,7 +2,7 @@
 函数说明: 
 Author: hongqing
 Date: 2021-08-13 13:02:17
-LastEditTime: 2021-08-13 16:08:27
+LastEditTime: 2021-08-13 17:51:22
 '''
 '''
 函数说明: 
@@ -31,8 +31,9 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 class Worker(ctx.Process):
-    def __init__(self, sharedModel,pipe,name):
+    def __init__(self, sharedModel,pipe,name,isplay=True):
         super(Worker, self).__init__()
+        self.isplay = isplay
         self.name = 'w%02i' % name
         self.pipe = pipe
         self.sharedModel = sharedModel
@@ -58,7 +59,7 @@ class Worker(ctx.Process):
             #平铺
             transS = torch.Tensor(self.env.getBoard()).unsqueeze(0)
             a = self.net.choose_action(transS,limit)
-            _, r, done, combo,pos,limit = self.env.step(pos,a,combo)
+            _, r, done, combo,pos,limit = self.env.step(pos,a,combo,isPlay = self.isplay)
             transS_ = torch.Tensor(self.env.getBoard()).unsqueeze(0)
 
             maxcomboget = max(maxcomboget,combo)
@@ -106,8 +107,8 @@ class Animater(ctx.Process):
             #平铺
             self.env.render()
             transS = torch.Tensor(self.env.getBoard()).unsqueeze(0)
-            a = self.net.choose_action(transS,limit)
-            _, r, done, combo,pos,limit = self.env.step(pos,a,combo)
+            a = self.net.choose_action(transS,limit,eval=True)
+            _, r, done, combo,pos,limit = self.env.step(pos,a,combo,isPlay=False)
             maxcomboget = max(maxcomboget,combo)
             totalreward += r
             if done:    # 如果回合结束, 进入下回合
@@ -146,7 +147,7 @@ def DQNmethod(arg):
     #     print('start process:{}'.format(i))
     #     pro = ctx.Process(target=processEpoch, args=(dqn.eval_net,pipe_dict[i],i))
     #     child_process_list.append(pro)
-    workers = [Worker(dqn.eval_net,pipe_dict[i][1],i) for i in range(args.num_processes)]
+    workers = [Worker(dqn.eval_net,pipe_dict[i][1],i,isplay = args.is_play) for i in range(args.num_processes)]
     if(args.fps>=0):
         #追加动画
         workers.append(Animater(dqn.eval_net,))
@@ -159,6 +160,7 @@ def DQNmethod(arg):
     calreward = 0
     calloss = 0
     calcombo =0
+    index=1
     processwriter = [SummaryWriter('./logs/process{}'.format(i+1), comment='tiny_result') for i in range(args.num_processes)]
     # args.max_episode_length
     for i_episode in range(1,1000000):
@@ -172,10 +174,16 @@ def DQNmethod(arg):
                 if dqn.memory_counter >= args.memory_capacity:
                     epochloss = dqn.learn() # 记忆库满了就进行学习
             nowepoch+=1
+            
             print('process:{},episode:{},loss:{},maxcombo:{},totalreward:{},train started:{}'.format(i,nowepoch,epochloss,maxcomboget,totalreward,dqn.memory_counter > args.memory_capacity))
-            processwriter[i].add_scalar('step/loss',epochloss,math.ceil(nowepoch/args.num_processes))
-            processwriter[i].add_scalar('step/maxcombo',maxcomboget,math.ceil(nowepoch/args.num_processes))
-            processwriter[i].add_scalar('step/totalreward',totalreward,math.ceil(nowepoch/args.num_processes))
+            calreward+=totalreward
+            calloss+=epochloss
+            calcombo+=maxcomboget
+            if(nowepoch%100==0):
+                processwriter[i].add_scalar('step/loss',epochloss,index)
+                processwriter[i].add_scalar('step/maxcombo',maxcomboget,index)
+                processwriter[i].add_scalar('step/totalreward',totalreward,index)
+                index+=1
             # if(nowepoch%1000==0):
                 # dqn.save('tinyconv',nowepoch)
             pipe_dict[i][0].send(dqn.version)

@@ -2,7 +2,7 @@
 函数说明: 
 Author: hongqing
 Date: 2021-07-14 10:50:40
-LastEditTime: 2021-08-13 15:40:26
+LastEditTime: 2021-08-13 18:00:43
 '''
 import numpy as np
 import random
@@ -174,15 +174,12 @@ class Board():
         maxcombo = self.maxcomb
         combo = self.calculate()
         self.board = tmp
-        
-        if(combo == curcombo):
-            return 0,combo
-        if(combo < curcombo):
-            return -pow(2,curcombo-combo),combo
+        reward = 0
         #分数计算规则
-        reward = pow(2,combo-curcombo)
-        if(combo ==maxcombo):
-            reward = pow(2,combo-curcombo+1)
+        if(combo>curcombo):
+            reward = pow(2,combo-1)
+        # if(combo ==maxcombo):
+        #     reward = pow(2,combo-curcombo)
         return reward,combo
     
     #根据当前珠子获取可选位置 pos为当前珠

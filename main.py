@@ -2,7 +2,7 @@
 函数说明: 
 Author: hongqing
 Date: 2021-08-11 16:05:12
-LastEditTime: 2021-08-13 16:17:23
+LastEditTime: 2021-08-13 17:21:52
 '''
 from padA3C.sharedAdam import SharedAdam
 from padA3C.A3C import A3Cmethod
@@ -63,6 +63,9 @@ parser.add_argument('--dqn-epsilon', type=int,default=0.9,
                 help='DQN EPSILON')
 parser.add_argument('--dqn-gamma', type=int,default=0.9,
                 help='DQN GAMMA')
+parser.add_argument('--is-play', default=True,
+            help='CTW(changetheworld) or not')  
+
 os.environ['OMP_NUM_THREADS'] = '1'
 
 args = parser.parse_args()
@@ -70,5 +73,9 @@ args = parser.parse_args()
 
 
 if __name__ == "__main__":
+    import shutil
+    if('logs' in os.listdir('.')):
+        shutil.rmtree('logs')
     # A3Cmethod(args)  
     DQNmethod(args) 
+    
